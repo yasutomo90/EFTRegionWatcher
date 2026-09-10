@@ -458,7 +458,17 @@ pub unsafe fn canvas(dc: HDC, v: &View) {
             LR_DEFAULTCOLOR | LR_SHARED,
         );
         if !icon.is_null() {
-            DrawIconEx(dc, 28, 28, icon as HICON, 36, 36, 0, ptr::null_mut(), DI_NORMAL);
+            DrawIconEx(
+                dc,
+                28,
+                28,
+                icon as HICON,
+                36,
+                36,
+                0,
+                ptr::null_mut(),
+                DI_NORMAL,
+            );
         } else {
             rounded(dc, rect(28, 28, 36, 36), c.tint, c.tint, 12);
         }
@@ -532,8 +542,18 @@ pub unsafe fn canvas(dc: HDC, v: &View) {
             // Stacked so a long "国 / 地域 / 都市" label does not overflow the card.
             let parts: Vec<&str> = v.region.split(" / ").collect();
             // More lines need a taller band than the single-line layout leaves.
-            let extra = match parts.len() { 1 => 0, 2 => 12, _ => 28 };
-            rounded(dc, rect(28, 194, 424, 236 - gap + extra), c.card, c.border, 18);
+            let extra = match parts.len() {
+                1 => 0,
+                2 => 12,
+                _ => 28,
+            };
+            rounded(
+                dc,
+                rect(28, 194, 424, 236 - gap + extra),
+                c.card,
+                c.border,
+                18,
+            );
             line_text(dc, "推定地域", rect(48, 213, 345, 22), 12, true, c.muted);
             let size = match (parts.len(), v.has_endpoint) {
                 (1, true) => 28,
@@ -554,11 +574,39 @@ pub unsafe fn canvas(dc: HDC, v: &View) {
                     c.text,
                 );
             }
-            line_text(dc, &v.provider, rect(48, 301 + extra, 384, 24), 12, false, c.muted);
+            line_text(
+                dc,
+                &v.provider,
+                rect(48, 301 + extra, 384, 24),
+                12,
+                false,
+                c.muted,
+            );
             fill(dc, rect(48, 346 - gap + extra, 384, 1), c.border);
-            line_text(dc, "SERVER", rect(48, 362 - gap + extra, 80, 20), 10, true, c.muted);
-            line_text(dc, &v.endpoint, rect(130, 359 - gap + extra, 302, 26), 17, true, c.text);
-            line_text(dc, &v.time, rect(48, 395 - gap + extra, 384, 18), 11, false, c.muted);
+            line_text(
+                dc,
+                "SERVER",
+                rect(48, 362 - gap + extra, 80, 20),
+                10,
+                true,
+                c.muted,
+            );
+            line_text(
+                dc,
+                &v.endpoint,
+                rect(130, 359 - gap + extra, 302, 26),
+                17,
+                true,
+                c.text,
+            );
+            line_text(
+                dc,
+                &v.time,
+                rect(48, 395 - gap + extra, 384, 18),
+                11,
+                false,
+                c.muted,
+            );
         }
         if !v.settings {
             let notice = if !v.notice.is_empty() {
@@ -622,17 +670,7 @@ pub unsafe fn paint(hwnd: HWND) {
         } else {
             let old = SelectObject(buffer, bitmap);
             scaled_canvas(buffer, &view);
-            BitBlt(
-                dc,
-                0,
-                0,
-                client.right,
-                client.bottom,
-                buffer,
-                0,
-                0,
-                SRCCOPY,
-            );
+            BitBlt(dc, 0, 0, client.right, client.bottom, buffer, 0, 0, SRCCOPY);
             SelectObject(buffer, old);
             DeleteObject(bitmap);
             DeleteDC(buffer);
@@ -689,7 +727,11 @@ unsafe fn draw_button(dc: HDC, id: usize, w: i32, h: i32, state: u32, v: &View) 
     unsafe {
         let c = palette(v.dark);
         // Whatever the button sits on shows through its rounded corners.
-        fill(dc, rect(0, 0, w, h), if id == SELECT { c.card } else { c.bg });
+        fill(
+            dc,
+            rect(0, 0, w, h),
+            if id == SELECT { c.card } else { c.bg },
+        );
         let pressed = state & ODS_SELECTED != 0;
         let disabled = state & ODS_DISABLED != 0;
         if [DARK, RESIDENT, NOTIFY, AUTO_UPDATE].contains(&id) {
@@ -738,7 +780,13 @@ unsafe fn draw_button(dc: HDC, id: usize, w: i32, h: i32, state: u32, v: &View) 
             } else {
                 c.card
             };
-            rounded(dc, rect(0, 0, w, h), bg, if active { bg } else { c.border }, 10);
+            rounded(
+                dc,
+                rect(0, 0, w, h),
+                bg,
+                if active { bg } else { c.border },
+                10,
+            );
             text(
                 dc,
                 if id == TAB_NOW {
@@ -797,7 +845,11 @@ unsafe fn draw_button(dc: HDC, id: usize, w: i32, h: i32, state: u32, v: &View) 
             );
         }
         if state & ODS_FOCUS != 0 && v.focus {
-            let radius = if id == TAB_NOW || id == TAB_LOG { 10 } else { 12 };
+            let radius = if id == TAB_NOW || id == TAB_LOG {
+                10
+            } else {
+                12
+            };
             focus_ring(dc, w, h, radius, c);
         }
     }
@@ -808,9 +860,23 @@ pub fn button_specs(settings: bool) -> Vec<(usize, &'static str, i32, i32, i32, 
             (BACK, "メイン画面に戻る", 384, 28, 68, 36),
             (SELECT, "ログフォルダを変更", 348, 178, 88, 38),
             (DARK, "ダークモードを切り替える", 36, 260, 408, 52),
-            (RESIDENT, "閉じてもトレイに残すかを切り替える", 36, 312, 408, 52),
+            (
+                RESIDENT,
+                "閉じてもトレイに残すかを切り替える",
+                36,
+                312,
+                408,
+                52,
+            ),
             (NOTIFY, "接続通知を切り替える", 36, 364, 408, 52),
-            (AUTO_UPDATE, "自動更新チェックを切り替える", 36, 416, 408, 52),
+            (
+                AUTO_UPDATE,
+                "自動更新チェックを切り替える",
+                36,
+                416,
+                408,
+                52,
+            ),
             (CHECK, "更新を確認", 28, 492, 424, 40),
             (EXIT, "アプリを終了", 380, 548, 72, 26),
         ]
@@ -1110,7 +1176,10 @@ mod tests {
                 ptr::null(),
                 (&raw mut fonts) as *const u32,
             );
-            assert!(!loaded.is_null() && fonts > 0, "embedded font rejected by GDI");
+            assert!(
+                !loaded.is_null() && fonts > 0,
+                "embedded font rejected by GDI"
+            );
         }
     }
     #[test]
@@ -1179,8 +1248,11 @@ mod tests {
                             .map(|i| {
                                 (
                                     format!("203.0.113.{}", 10 + i),
-                                    ["Japan / Tokyo", "Germany / Frankfurt", "地域を取得しています…"]
-                                        [i % 3]
+                                    [
+                                        "Japan / Tokyo",
+                                        "Germany / Frankfurt",
+                                        "地域を取得しています…",
+                                    ][i % 3]
                                         .into(),
                                     format!("2026/09/10 1{}:30:00", 4 - i),
                                 )

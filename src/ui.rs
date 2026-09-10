@@ -523,12 +523,7 @@ unsafe extern "system" fn wndproc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM) ->
             }
             WM_MOUSEWHEEL => {
                 let down = ((w >> 16) as u16 as i16) < 0;
-                PostMessageW(
-                    hwnd,
-                    COMMAND,
-                    if down { SCROLL_DOWN } else { SCROLL_UP },
-                    0,
-                );
+                PostMessageW(hwnd, COMMAND, if down { SCROLL_DOWN } else { SCROLL_UP }, 0);
                 0
             }
             WM_CLOSE => {
@@ -667,16 +662,13 @@ impl App {
             .and_then(|e| self.locations.get(&e.ip))
             .and_then(Option::as_ref)
             .cloned();
-        let region = current
-            .as_ref()
-            .map(Location::label)
-            .unwrap_or_else(|| {
-                if has_endpoint {
-                    "地域を取得できません".into()
-                } else {
-                    "接続先を待っています".into()
-                }
-            });
+        let region = current.as_ref().map(Location::label).unwrap_or_else(|| {
+            if has_endpoint {
+                "地域を取得できません".into()
+            } else {
+                "接続先を待っています".into()
+            }
+        });
         // The ASN and organization are noise for the reader; only guidance goes here.
         let provider = if current.is_some() {
             String::new()
@@ -747,9 +739,10 @@ impl App {
                 let id = GetDlgCtrlID(button) as usize;
                 let toggle = match id {
                     style::DARK => Some(("ダークモード", self.config.dark_mode)),
-                    style::RESIDENT => {
-                        Some(("閉じてもトレイに残す", self.config.minimize_to_tray_on_close))
-                    }
+                    style::RESIDENT => Some((
+                        "閉じてもトレイに残す",
+                        self.config.minimize_to_tray_on_close,
+                    )),
                     style::NOTIFY => Some(("接続通知", self.config.connection_notifications)),
                     style::AUTO_UPDATE => Some(("自動更新チェック", self.config.update.enabled)),
                     _ => None,
