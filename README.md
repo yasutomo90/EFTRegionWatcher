@@ -219,6 +219,30 @@ workflow はリポジトリ名を `EFT_RELEASE_REPOSITORY` として埋め込ん
 CI が公開するのは、`EFTRegionWatcher.exe`、`EFTRegionWatcher.Updater.exe`、`SHA256SUMS.txt`、ZIP とそのハッシュです。
 更新先が埋め込まれるのはこの経路でビルドしたものだけなので、手元でビルドした実行ファイルは自動更新を行いません。
 
+### バージョン付けの規則
+
+バージョンは [セマンティック バージョニング](https://semver.org/lang/ja/) に従い、`MAJOR.MINOR.PATCH` の 3 つの数字だけで表します。
+
+| 上げる桁 | 上げる場面 |
+|---|---|
+| MAJOR | 設定ファイルの互換性が切れる、更新経路そのものが変わるなど、旧版からそのまま移行できない変更 |
+| MINOR | 機能の追加、対応ログ形式の追加、画面の変更 |
+| PATCH | 不具合の修正、文言と表示の調整、依存の更新 |
+
+タグは、`Cargo.toml` の `version` に `v` を付けた形にします。
+release workflow はタグ名と `Cargo.toml` のバージョンが一致することを確かめ、食い違っていればビルドの前に失敗します。
+したがって、バージョンを上げるコミットとタグは必ず同じコミットを指します。
+
+更新の通知には、次の条件をすべて満たす Release だけを使います。
+
+- draft でも prerelease でもない
+- タグに `-rc.1` のようなプレリリース識別子が付いていない
+- 現在のバージョンより大きい
+- 利用者が「このバージョンをスキップ」を選んだバージョンと一致しない
+
+release workflow のバージョン検証は `MAJOR.MINOR.PATCH` の形しか受け付けないため、プレリリース版を Release として公開する手段は用意していません。
+公開前の動作確認には、`build.yml` が push ごとに作る成果物（Actions の artifact）を使います。
+
 ## 非公式プロジェクト
 
 EFTRegionWatcher is an unofficial community tool and is not affiliated with,
