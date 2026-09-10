@@ -5,6 +5,22 @@ use std::{
     fs, io,
     path::{Path, PathBuf},
 };
+/// The helper may only run from a staging directory under `updates/`, with its readiness file
+/// directly inside that same directory.
+///
+/// `staging` and `allowed` are canonicalized by the caller; `ready` is not, because the app passes
+/// the path it built from the data directory and the file does not exist yet. Comparing the two
+/// forms directly never matches on Windows, where canonicalization adds the `\\?\` prefix, so the
+/// parent directory is canonicalized here instead.
+pub fn staging_ok(staging: &Path, allowed: &Path, ready: &Path) -> bool {
+    staging.starts_with(allowed)
+        && staging != allowed
+        && ready.file_name() == Some(std::ffi::OsStr::new("ready"))
+        && ready
+            .parent()
+            .and_then(|p| p.canonicalize().ok())
+            .is_some_and(|p| p == staging)
+}
 pub const APP: &str = "EFTRegionWatcher.exe";
 pub const UPDATER: &str = "EFTRegionWatcher.Updater.exe";
 pub const SUMS: &str = "SHA256SUMS.txt";
@@ -280,6 +296,21 @@ mod tests {
             body: None,
             assets: vec![],
         }
+    }
+    #[test]
+    fn staging_guard_accepts_the_path_the_app_actually_passes() {
+        let allowed = std::env::temp_dir().join(format!("eft-updates-{}", std::process::id()));
+        let staging = allowed.join("stage-1");
+        fs::create_dir_all(&staging).unwrap();
+        let allowed_c = allowed.canonicalize().unwrap();
+        let staging_c = staging.canonicalize().unwrap();
+        // The app builds `ready` from the data directory, so it arrives uncanonicalized.
+        assert!(staging_ok(&staging_c, &allowed_c, &staging.join("ready")));
+        assert!(staging_ok(&staging_c, &allowed_c, &staging_c.join("ready")));
+        assert!(!staging_ok(&staging_c, &allowed_c, &staging.join("other")));
+        assert!(!staging_ok(&staging_c, &allowed_c, &allowed.join("ready")));
+        assert!(!staging_ok(&allowed_c, &allowed_c, &allowed.join("ready")));
+        fs::remove_dir_all(&allowed).unwrap();
     }
     #[test]
     fn version_rules() {

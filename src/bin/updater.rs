@@ -35,7 +35,7 @@ fn run() -> std::io::Result<()> {
     let allowed = eft_region_watcher::config::data_dir()
         .join("updates")
         .canonicalize()?;
-    if !staging.starts_with(&allowed) || staging == allowed || ready != staging.join("ready") {
+    if !update::staging_ok(staging, &allowed, &ready) {
         return Err(io::Error::other("不正な更新作業フォルダ"));
     }
     let parent = platform::process_handle(pid)?;

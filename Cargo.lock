@@ -64,7 +64,7 @@ dependencies = [
 
 [[package]]
 name = "eft-region-watcher"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "embed-resource",
  "notify",
