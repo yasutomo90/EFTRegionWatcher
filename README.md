@@ -7,7 +7,7 @@ Escape from Tarkov のログに記録された接続先 IP を読み取り、推
 ゲームメモリの読み取り、DLL 注入、フック、パケットキャプチャ、ゲーム操作の自動化はいずれも行いません。
 日本語フォント（Noto Sans JP）を実行ファイルに同梱するため、フォントの追加インストールも不要です。
 
-現在のバージョンは **0.1.0（初期実装）** です。
+最新版は [Releases](https://github.com/yasutomo90/EFTRegionWatcher/releases) から入手できます。
 公開先は [github.com/yasutomo90/EFTRegionWatcher](https://github.com/yasutomo90/EFTRegionWatcher) です。
 実機検証の結果と未確認項目は [検証記録](docs/VALIDATION.md) を参照してください。
 
