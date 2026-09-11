@@ -9,7 +9,6 @@ Escape from Tarkov のログに記録された接続先 IP を読み取り、推
 
 最新版は [Releases](https://github.com/yasutomo90/EFTRegionWatcher/releases) から入手できます。
 公開先は [github.com/yasutomo90/EFTRegionWatcher](https://github.com/yasutomo90/EFTRegionWatcher) です。
-実機検証の結果と未確認項目は [検証記録](docs/VALIDATION.md) を参照してください。
 
 ## 起動と初期設定
 
