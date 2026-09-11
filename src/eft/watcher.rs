@@ -24,6 +24,7 @@ pub enum LogEvent {
 }
 enum Message {
     Change(notify::Result<Event>),
+    Poll,
     Stop,
 }
 pub struct LogWatcher {
@@ -93,20 +94,17 @@ impl LogWatcher {
                 }
             }
             loop {
-                let message = if pending.is_empty() {
-                    rx.recv().ok()
-                } else {
-                    match rx.recv_timeout(Duration::from_millis(500)) {
-                        Ok(m) => Some(m),
-                        Err(mpsc::RecvTimeoutError::Timeout) => {
-                            Some(Message::Change(Ok(Event::new(notify::EventKind::Any))))
-                        }
-                        Err(_) => None,
-                    }
+                let message = match rx.recv_timeout(Duration::from_millis(500)) {
+                    Ok(m) => Some(m),
+                    Err(mpsc::RecvTimeoutError::Timeout) => Some(Message::Poll),
+                    Err(_) => None,
                 };
                 let mut changed = HashSet::new();
                 match message {
                     None | Some(Message::Stop) => break,
+                    // Windows defers change notifications for a file the game keeps open, so
+                    // notify alone can stay silent for a whole raid. Rescan on every tick.
+                    Some(Message::Poll) => changed.extend(log_files(&root)),
                     Some(Message::Change(Err(e))) => {
                         send(LogEvent::Unavailable(format!("ログ監視エラー: {e}")));
                         changed.extend(log_files(&root));
@@ -354,6 +352,43 @@ mod tests {
         .unwrap();
         let event = rx.recv_timeout(Duration::from_secs(5)).unwrap();
         assert!(matches!(event, LogEvent::Endpoint { .. }));
+        drop(watcher);
+        fs::remove_dir_all(d).unwrap();
+    }
+    /// 連続レイド: 既存のログに追記されたら、通知の有無に関わらず拾えること。
+    #[test]
+    fn appended_line_is_detected() {
+        let d = std::env::temp_dir().join(format!("eft-append-{}", std::process::id()));
+        fs::create_dir_all(&d).unwrap();
+        let log = d.join("application.log");
+        fs::write(&log, b"Connect (address: 1.2.3.4:42)\n").unwrap();
+        let (tx, rx) = mpsc::channel();
+        let watcher = LogWatcher::start(d.clone(), move |e| {
+            let _ = tx.send(e);
+        })
+        .unwrap();
+        assert!(matches!(
+            rx.recv_timeout(Duration::from_secs(5)).unwrap(),
+            LogEvent::Endpoint {
+                historical: true,
+                ..
+            }
+        ));
+        let mut f = File::options().append(true).open(&log).unwrap();
+        f.write_all(b"Connect (address: 5.6.7.8:43)\n").unwrap();
+        f.flush().unwrap();
+        let event = rx.recv_timeout(Duration::from_secs(5)).unwrap();
+        match event {
+            LogEvent::Endpoint {
+                endpoint,
+                historical,
+                ..
+            } => {
+                assert_eq!(endpoint.port, Some(43));
+                assert!(!historical);
+            }
+            e => panic!("{e:?}"),
+        }
         drop(watcher);
         fs::remove_dir_all(d).unwrap();
     }
