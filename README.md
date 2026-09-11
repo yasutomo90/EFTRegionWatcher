@@ -165,16 +165,15 @@ cargo build --locked --release
 実通信を伴うテストは通常の実行ではスキップし、`./scripts/test.ps1 -IncludeNetwork` を付けたときだけ実行します。
 スクリプトの実行には PowerShell 7 が必要です。
 
-補助スクリプトは 4 つあります。
+補助スクリプトは 3 つあります。
 
 | スクリプト | 用途 |
 |---|---|
 | `scripts/test.ps1` | 静かなテスト実行（`-IncludeNetwork` で実通信テストも実行） |
 | `scripts/package.ps1` | `target/dist/` に実行ファイル・説明書・`SHA256SUMS.txt`・ZIP を生成 |
-| `scripts/icon.ps1` | `assets/icon-source.png` から `assets/icon.ico`（256〜16px）を生成 |
 | `scripts/profile.ps1` | 空のログフォルダで一定時間動かし、待機時のメモリと CPU を記録 |
 
-アイコンを差し替えるときは、`assets/icon-source.png` を置き換えて `scripts/icon.ps1` を実行します。
+アイコンを差し替えるときは、`assets/icon.ico` を置き換えます。
 ウィンドウ、トレイ、画面左上のマークはいずれも同じアイコンリソース（resource 1）を参照するので、再ビルドすれば 3 か所とも同時に切り替わります。
 
 `cargo test` は、UI の描画結果を `target/ui-previews/` に PNG として書き出します（ダーク／ライト、各タブ、設定画面、200% 拡大）。
