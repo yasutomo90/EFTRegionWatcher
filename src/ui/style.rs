@@ -69,45 +69,72 @@ pub fn snapshot() -> View {
 pub fn set_view(view: View) {
     VIEW.with(|v| *v.borrow_mut() = view);
 }
+/// Tokens from design-base (src/styles/tokens.css). Dark `-subtle` tokens are translucent
+/// there; GDI has no alpha fill, so they are pre-blended over `--bg`.
 #[derive(Clone, Copy)]
 struct Colors {
     bg: u32,
-    card: u32,
-    inset: u32,
+    surface: u32,
+    surface2: u32,
     border: u32,
     text: u32,
     muted: u32,
-    accent: u32,
-    accent_text: u32,
-    tint: u32,
+    blue: u32,
+    blue_hover: u32,
+    blue_fg: u32,
+    blue_subtle: u32,
+    blue_text: u32,
+    green: u32,
+    green_subtle: u32,
+    green_text: u32,
+    gray: u32,
+    gray_subtle: u32,
+    gray_text: u32,
 }
-fn rgb(r: u32, g: u32, b: u32) -> u32 {
-    r | (g << 8) | (b << 16)
+/// 0xRRGGBB, as written in CSS, to COLORREF (0x00BBGGRR).
+const fn hex(v: u32) -> u32 {
+    ((v >> 16) & 0xff) | (v & 0xff00) | ((v & 0xff) << 16)
 }
 fn palette(dark: bool) -> Colors {
     if dark {
         Colors {
-            bg: rgb(17, 21, 26),
-            card: rgb(25, 31, 38),
-            inset: rgb(32, 39, 47),
-            border: rgb(47, 57, 67),
-            text: rgb(235, 242, 247),
-            muted: rgb(151, 166, 180),
-            accent: rgb(122, 222, 184),
-            accent_text: rgb(16, 43, 34),
-            tint: rgb(28, 55, 46),
+            bg: hex(0x1e1e1e),
+            surface: hex(0x262626),
+            surface2: hex(0x303030),
+            border: hex(0x3d3d3d),
+            text: hex(0xececec),
+            muted: hex(0xa3a3a3),
+            blue: hex(0x3b82f6),
+            blue_hover: hex(0x2563eb),
+            blue_fg: hex(0xffffff),
+            blue_subtle: hex(0x232e41),
+            blue_text: hex(0x93c5fd),
+            green: hex(0x22c55e),
+            green_subtle: hex(0x1f3928),
+            green_text: hex(0x86efac),
+            gray: hex(0x6b6b6b),
+            gray_subtle: hex(0x303030),
+            gray_text: hex(0xd4d4d4),
         }
     } else {
         Colors {
-            bg: rgb(244, 247, 248),
-            card: rgb(255, 255, 255),
-            inset: rgb(237, 242, 244),
-            border: rgb(221, 229, 233),
-            text: rgb(26, 40, 50),
-            muted: rgb(92, 112, 126),
-            accent: rgb(23, 113, 84),
-            accent_text: rgb(255, 255, 255),
-            tint: rgb(227, 242, 234),
+            bg: hex(0xffffff),
+            surface: hex(0xf8fafc),
+            surface2: hex(0xf1f5f9),
+            border: hex(0xe2e8f0),
+            text: hex(0x0f172a),
+            muted: hex(0x64748b),
+            blue: hex(0x2563eb),
+            blue_hover: hex(0x1d4ed8),
+            blue_fg: hex(0xffffff),
+            blue_subtle: hex(0xdbeafe),
+            blue_text: hex(0x1e40af),
+            green: hex(0x16a34a),
+            green_subtle: hex(0xdcfce7),
+            green_text: hex(0x166534),
+            gray: hex(0x475569),
+            gray_subtle: hex(0xf1f5f9),
+            gray_text: hex(0x334155),
         }
     }
 }
@@ -278,7 +305,7 @@ unsafe fn text(dc: HDC, value: &str, r: RECT, size: i32, bold: bool, color: u32,
             0,
             0,
             0,
-            if bold { 600 } else { 400 },
+            if bold { 700 } else { 400 },
             0,
             0,
             0,
@@ -323,7 +350,7 @@ unsafe fn focus_ring(dc: HDC, w: i32, h: i32, radius: i32, c: Colors) {
     unsafe {
         let g = graphics(dc);
         if g.is_null() {
-            let pen = CreatePen(PS_SOLID, 1, c.accent);
+            let pen = CreatePen(PS_SOLID, 1, c.blue);
             let old_pen = SelectObject(dc, pen);
             let old_brush = SelectObject(dc, GetStockObject(HOLLOW_BRUSH));
             RoundRect(dc, 2, 2, w - 2, h - 2, radius, radius);
@@ -343,7 +370,7 @@ unsafe fn focus_ring(dc: HDC, w: i32, h: i32, radius: i32, c: Colors) {
         GdipAddPathArc(path, x, y + rh - d, d, d, 90.0, 90.0);
         GdipClosePathFigure(path);
         let mut pen = ptr::null_mut();
-        GdipCreatePen1(argb(c.accent), 1.0, UnitPixel, &mut pen);
+        GdipCreatePen1(argb(c.blue), 1.0, UnitPixel, &mut pen);
         GdipDrawPath(g, pen, path);
         GdipDeletePen(pen);
         GdipDeletePath(path);
@@ -360,15 +387,15 @@ unsafe fn toggle(dc: HDC, x: i32, y: i32, on: bool, c: Colors) {
         rounded(
             dc,
             rect(x, y, 42, 24),
-            if on { c.accent } else { c.border },
-            if on { c.accent } else { c.border },
+            if on { c.blue } else { c.border },
+            if on { c.blue } else { c.border },
             24,
         );
         rounded(
             dc,
             rect(x + if on { 22 } else { 4 }, y + 4, 16, 16),
-            if on { c.accent_text } else { c.card },
-            if on { c.accent_text } else { c.card },
+            if on { c.blue_fg } else { c.bg },
+            if on { c.blue_fg } else { c.bg },
             16,
         );
     }
@@ -390,7 +417,7 @@ unsafe fn history(dc: HDC, v: &View, c: Colors) {
                 DT_SINGLELINE | DT_VCENTER | DT_RIGHT,
             );
         }
-        rounded(dc, rect(28, 178, 424, 252), c.card, c.border, 16);
+        rounded(dc, rect(28, 178, 424, 252), c.surface, c.border, 12);
         if v.history.is_empty() {
             text(
                 dc,
@@ -411,7 +438,7 @@ unsafe fn history(dc: HDC, v: &View, c: Colors) {
                 48,
                 y + 20,
                 if newest && v.connected {
-                    c.accent
+                    c.green
                 } else {
                     c.border
                 },
@@ -438,7 +465,7 @@ unsafe fn history(dc: HDC, v: &View, c: Colors) {
             let travel = TRACK - thumb;
             let scrolled = v.history_total - v.history.len();
             let y = 186 + travel * v.history_offset.min(scrolled) as i32 / scrolled as i32;
-            rounded(dc, rect(438, 186, 4, TRACK), c.inset, c.inset, 4);
+            rounded(dc, rect(438, 186, 4, TRACK), c.surface2, c.surface2, 4);
             rounded(dc, rect(438, y, 4, thumb), c.muted, c.muted, 4);
         }
     }
@@ -470,7 +497,7 @@ pub unsafe fn canvas(dc: HDC, v: &View) {
                 DI_NORMAL,
             );
         } else {
-            rounded(dc, rect(28, 28, 36, 36), c.tint, c.tint, 12);
+            rounded(dc, rect(28, 28, 36, 36), c.blue_subtle, c.blue_subtle, 8);
         }
         line_text(
             dc,
@@ -498,21 +525,27 @@ pub unsafe fn canvas(dc: HDC, v: &View) {
                 false,
                 c.muted,
             );
-            rounded(dc, rect(28, 158, 424, 80), c.card, c.border, 16);
+            rounded(dc, rect(28, 158, 424, 80), c.surface, c.border, 12);
             line_text(dc, "ログフォルダ", rect(44, 170, 290, 22), 13, true, c.text);
             line_text(dc, &v.path, rect(44, 199, 290, 20), 11, false, c.muted);
-            rounded(dc, rect(28, 252, 424, 224), c.card, c.border, 16);
+            rounded(dc, rect(28, 252, 424, 224), c.surface, c.border, 12);
         } else if v.log_tab {
             history(dc, v, c);
         } else {
+            // design-base Badge, subtle variant: green when connected, gray while waiting.
+            let (badge, badge_text) = if v.connected {
+                (c.green_subtle, c.green_text)
+            } else {
+                (c.gray_subtle, c.gray_text)
+            };
             rounded(
                 dc,
                 rect(28, 150, if v.connected { 118 } else { 106 }, 28),
-                if v.connected { c.tint } else { c.inset },
-                if v.connected { c.tint } else { c.inset },
+                badge,
+                badge,
                 28,
             );
-            dot(dc, 40, 160, if v.connected { c.accent } else { c.muted });
+            dot(dc, 40, 160, if v.connected { c.green } else { c.muted });
             line_text(
                 dc,
                 if v.connected {
@@ -523,7 +556,7 @@ pub unsafe fn canvas(dc: HDC, v: &View) {
                 rect(57, 151, 84, 26),
                 12,
                 true,
-                if v.connected { c.accent } else { c.muted },
+                badge_text,
             );
             line_text(
                 dc,
@@ -550,9 +583,9 @@ pub unsafe fn canvas(dc: HDC, v: &View) {
             rounded(
                 dc,
                 rect(28, 194, 424, 236 - gap + extra),
-                c.card,
+                c.surface,
                 c.border,
-                18,
+                12,
             );
             line_text(dc, "推定地域", rect(48, 213, 345, 22), 12, true, c.muted);
             let size = match (parts.len(), v.has_endpoint) {
@@ -727,11 +760,8 @@ unsafe fn draw_button(dc: HDC, id: usize, w: i32, h: i32, state: u32, v: &View) 
     unsafe {
         let c = palette(v.dark);
         // Whatever the button sits on shows through its rounded corners.
-        fill(
-            dc,
-            rect(0, 0, w, h),
-            if id == SELECT { c.card } else { c.bg },
-        );
+        let under = if id == SELECT { c.surface } else { c.bg };
+        fill(dc, rect(0, 0, w, h), under);
         let pressed = state & ODS_SELECTED != 0;
         let disabled = state & ODS_DISABLED != 0;
         if [DARK, RESIDENT, NOTIFY, AUTO_UPDATE].contains(&id) {
@@ -754,9 +784,9 @@ unsafe fn draw_button(dc: HDC, id: usize, w: i32, h: i32, state: u32, v: &View) 
                 ),
             };
             // Rows sit inside one shared card drawn by canvas(); hairlines separate them.
-            fill(dc, rect(0, 0, w, h), c.card);
+            fill(dc, rect(0, 0, w, h), c.surface);
             if pressed {
-                rounded(dc, rect(0, 2, w, h - 4), c.inset, c.inset, 10);
+                rounded(dc, rect(0, 2, w, h - 4), c.surface2, c.surface2, 8);
             }
             if id != AUTO_UPDATE {
                 fill(dc, rect(8, h - 1, w - 16, 1), c.border);
@@ -772,20 +802,21 @@ unsafe fn draw_button(dc: HDC, id: usize, w: i32, h: i32, state: u32, v: &View) 
             );
             toggle(dc, w - 60, (h - 24) / 2, on, c);
         } else if id == TAB_NOW || id == TAB_LOG {
+            // Selected tab is a subtle blue button; the other is a outline gray one.
             let active = (id == TAB_LOG) == v.log_tab;
             let bg = if active {
-                c.tint
+                c.blue_subtle
             } else if pressed {
-                c.inset
+                c.gray_subtle
             } else {
-                c.card
+                under
             };
             rounded(
                 dc,
                 rect(0, 0, w, h),
                 bg,
-                if active { bg } else { c.border },
-                10,
+                if active { bg } else { c.gray },
+                8,
             );
             text(
                 dc,
@@ -797,27 +828,29 @@ unsafe fn draw_button(dc: HDC, id: usize, w: i32, h: i32, state: u32, v: &View) 
                 rect(0, 0, w, h),
                 12,
                 active,
-                if active { c.accent } else { c.muted },
+                if active { c.blue_text } else { c.gray_text },
                 DT_SINGLELINE | DT_VCENTER | DT_CENTER,
             );
         } else {
+            // design-base Button: one solid blue action, outline gray for the rest.
             let primary = id == CHECK;
             let bg = if disabled {
-                c.inset
+                c.surface2
+            } else if primary {
+                if pressed { c.blue_hover } else { c.blue }
             } else if pressed {
+                c.gray_subtle
+            } else {
+                under
+            };
+            let edge = if disabled {
                 c.border
             } else if primary {
-                c.accent
+                bg
             } else {
-                c.card
+                c.gray
             };
-            rounded(
-                dc,
-                rect(0, 0, w, h),
-                bg,
-                if primary { bg } else { c.border },
-                12,
-            );
+            rounded(dc, rect(0, 0, w, h), bg, edge, 8);
             let title = match id {
                 COPY => "IP をコピー",
                 SETTINGS => "設定",
@@ -837,21 +870,30 @@ unsafe fn draw_button(dc: HDC, id: usize, w: i32, h: i32, state: u32, v: &View) 
                 if disabled {
                     c.muted
                 } else if primary {
-                    c.accent_text
+                    c.blue_fg
                 } else {
-                    c.text
+                    c.gray_text
                 },
                 DT_SINGLELINE | DT_VCENTER | DT_CENTER,
             );
         }
         if state & ODS_FOCUS != 0 && v.focus {
-            let radius = if id == TAB_NOW || id == TAB_LOG {
-                10
-            } else {
-                12
-            };
-            focus_ring(dc, w, h, radius, c);
+            focus_ring(dc, w, h, 8, c);
         }
+    }
+}
+/// CSS `cursor: pointer` over enabled owner-drawn buttons. A child's DefWindowProc asks
+/// its parent first on WM_SETCURSOR, so both window procedures route through here.
+pub unsafe fn button_cursor(parent: HWND, child: HWND) -> bool {
+    unsafe {
+        if child == parent
+            || windows_sys::Win32::UI::Input::KeyboardAndMouse::IsWindowEnabled(child) == 0
+            || GetWindowLongW(child, GWL_STYLE) as u32 & BS_TYPEMASK as u32 != BS_OWNERDRAW as u32
+        {
+            return false;
+        }
+        SetCursor(LoadCursorW(ptr::null_mut(), IDC_HAND));
+        true
     }
 }
 pub fn button_specs(settings: bool) -> Vec<(usize, &'static str, i32, i32, i32, i32)> {
@@ -902,6 +944,7 @@ unsafe extern "system" fn modal_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM)
     unsafe {
         match msg {
             WM_ERASEBKGND => 1,
+            WM_SETCURSOR if button_cursor(hwnd, w as HWND) => 1,
             WM_CLOSE => {
                 PostMessageW(hwnd, MODAL_RESULT, 0, 0);
                 0
@@ -917,7 +960,7 @@ unsafe extern "system" fn modal_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM)
                 if let Some(s) = s.as_ref() {
                     let c = palette(s.dark);
                     SetTextColor(w as HDC, c.text);
-                    SetBkColor(w as HDC, c.card);
+                    SetBkColor(w as HDC, c.surface);
                     s.brush as isize
                 } else {
                     0
@@ -945,7 +988,7 @@ unsafe extern "system" fn modal_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM)
                             c.text,
                             DT_WORDBREAK,
                         );
-                        rounded(dc, rect(20, 94, 400, 186), c.card, c.border, 12);
+                        rounded(dc, rect(20, 94, 400, 186), c.surface, c.border, 12);
                         RestoreDC(dc, saved);
                     }
                 });
@@ -974,19 +1017,19 @@ unsafe extern "system" fn modal_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM)
                             let h = (item.rcItem.bottom - item.rcItem.top) * 96 / dpi();
                             fill(dc, rect(0, 0, w, h), c.bg);
                             let primary = item.CtlID as i32 == s.default_id;
-                            let color = if item.itemState & ODS_SELECTED != 0 {
-                                c.border
-                            } else if primary {
-                                c.accent
-                            } else {
-                                c.card
+                            let pressed = item.itemState & ODS_SELECTED != 0;
+                            let color = match (primary, pressed) {
+                                (true, false) => c.blue,
+                                (true, true) => c.blue_hover,
+                                (false, false) => c.bg,
+                                (false, true) => c.gray_subtle,
                             };
                             rounded(
                                 dc,
                                 rect(0, 0, w, h),
                                 color,
-                                if primary { color } else { c.border },
-                                12,
+                                if primary { color } else { c.gray },
+                                8,
                             );
                             text(
                                 dc,
@@ -994,11 +1037,11 @@ unsafe extern "system" fn modal_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM)
                                 rect(8, 0, w - 16, h),
                                 13,
                                 true,
-                                if primary { c.accent_text } else { c.text },
+                                if primary { c.blue_fg } else { c.gray_text },
                                 DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS,
                             );
                             if item.itemState & ODS_FOCUS != 0 {
-                                focus_ring(dc, w, h, 12, c);
+                                focus_ring(dc, w, h, 8, c);
                             }
                             RestoreDC(dc, saved);
                         }
@@ -1038,7 +1081,7 @@ pub fn modal(
         GetWindowRect(parent, &mut owner);
         let x = (owner.left + owner.right - (bounds.right - bounds.left)) / 2;
         let y = owner.top + 40;
-        let brush = CreateSolidBrush(c.card);
+        let brush = CreateSolidBrush(c.surface);
         MODAL.with(|s| {
             *s.borrow_mut() = Some(ModalStyle {
                 title: title.into(),

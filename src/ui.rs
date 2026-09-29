@@ -507,6 +507,7 @@ unsafe extern "system" fn wndproc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM) ->
     unsafe {
         match msg {
             WM_ERASEBKGND => 1,
+            WM_SETCURSOR if style::button_cursor(hwnd, w as HWND) => 1,
             WM_PAINT => {
                 style::paint(hwnd);
                 0
